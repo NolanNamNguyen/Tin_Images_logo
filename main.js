@@ -1,77 +1,55 @@
 // Modules to control application life and create native browser window
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const sharp = require('sharp');
 const fs = require('fs');
 const { dialog } = require('electron');
 
-const manipulateImage = async (imagePath) => {
-  try {
-    const homeDirectory = require('os').homedir();
-    const foregroundImagePath = `${homeDirectory}/Logo.png`;
-    const backgroundImagePath = imagePath;
-    console.log('backgroundImagePath', backgroundImagePath);
-
-    const parts = imagePath.split(/[\\/]/);
-    const outputPath = `${homeDirectory}/${parts[parts.length - 1]}`;
+const manipulateImage = async (imagePath, logoPath) => {
+  const parts = imagePath.split(/[\\/]/);
+  const outputPath = `${path.dirname(logoPath)}/${parts[parts.length - 1]}`;
 
 
-    // Read the foreground image dimensions
-    Promise.all([
-      sharp(backgroundImagePath).metadata(),
-      sharp(foregroundImagePath).metadata(),
-    ])
-      .then(([backgroundMetadata, foregroundMetadata]) => {
-        const backgroundHeight = backgroundMetadata.height;
-        const foregroundHeight = foregroundMetadata.height;
+  // Read the foreground image dimensions
+  await Promise.all([
+    sharp(imagePath).metadata(),
+    sharp(logoPath).metadata(),
+  ])
+    .then(([backgroundMetadata, foregroundMetadata]) => {
+      const backgroundHeight = backgroundMetadata.height;
+      const foregroundHeight = foregroundMetadata.height;
 
-        // Calculate the coordinates to place the foreground image at the bottom left corner
-        const left = 50; // Left corner
-        const top = backgroundHeight - foregroundHeight - 50; // Bottom corner
+      // Calculate the coordinates to place the foreground image at the bottom left corner
+      const left = 50; // Left corner
+      const top = backgroundHeight - foregroundHeight - 50; // Bottom corner
 
-        // Composite the foreground image onto the background image
-        sharp(backgroundImagePath)
-          .composite([{ input: foregroundImagePath, top, left }])
-          .toFile(outputPath, (err, info) => {
-            if (err) {
-              console.error('Error compositing images:', err);
-            } else {
-              console.log('Image composited successfully:', info);
-            }
-          });
-      })
-      .catch((err) => {
-        console.error('Error reading image metadata:', err);
-      });
-
-
-  } catch (error) {
-    console.error('Error manipulating image:', error);
-  }
-
+      // Composite the foreground image onto the background image
+      sharp(imagePath)
+        .composite([{ input: logoPath, top, left }])
+        .toFile(outputPath, (err, info) => {
+          if (err) {
+            dialog.showErrorBox('Error', 'Failed to generate images');
+          } else {
+          }
+        });
+    })
+    .catch((err) => {
+      dialog.showErrorBox('Error', 'Failed to generate images');
+    });
 };
 
 async function createWindow() {
   // Create the browser window.
-  // const mainWindow = new BrowserWindow({
-  //   width: 800,
-  //   height: 600,
-  //   webPreferences: {
-  //     preload: path.join(__dirname, 'preload.js'),
-  //   },
-  // });
-  const result = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] });
-  console.log('result', result);
-  if (!result.canceled && result.filePaths.length > 0) {
-    const imagePath = result.filePaths[0];
-    manipulateImage(imagePath);
-  }
+  const mainWindow = new BrowserWindow({
+    width: 800,
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
 
-  // and load the index.html of the app.
-  // mainWindow.loadFile('index.html');
+  mainWindow.loadFile('index.html');
 
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
 }
 
 // This method will be called when Electron has finished
@@ -79,12 +57,38 @@ async function createWindow() {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow();
+  let imagesPath;
+  let logoPath;
 
   app.on('activate', function() {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  ipcMain.on('imagesBtnClick', async (event, arg) => {
+    const result = await dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] });
+    if (!result.canceled && result.filePaths.length > 0) {
+      imagesPath = result.filePaths;
+    }
+    // Perform actions here when the button is clicked
+  });
+
+  ipcMain.on('logoBtnClick', async (event, arg) => {
+    const result = await dialog.showOpenDialog({ properties: ['openFile'] });
+    console.log('result.filePaths', result.filePaths);
+    if (!result.canceled && result.filePaths.length > 0) {
+      logoPath = result.filePaths[0];
+    }
+    // Perform actions here when the button is clicked
+  });
+
+  ipcMain.on('generateBtnClick', async () => {
+    for (let i = 0; i < imagesPath.length; i++) {
+      await manipulateImage(imagesPath[i], logoPath);
+    }
+  });
+
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

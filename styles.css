@@ -1,3 +1,7 @@
 /* styles.css */
+.buttonContainer {
+    display: flex;
+    justify-content: space-between;
+}
 
 /* Add styles here to customize the appearance of your app */

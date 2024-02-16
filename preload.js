@@ -5,13 +5,30 @@
  *
  * https://www.electronjs.org/docs/latest/tutorial/sandbox
  */
+const { ipcRenderer } = require('electron');
+
+
 window.addEventListener('DOMContentLoaded', () => {
   const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
+    const element = document.getElementById(selector);
+    if (element) element.innerText = text;
+  };
 
   for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
+    replaceText(`${type}-version`, process.versions[type]);
   }
-})
+
+  const imagesBtn = document.getElementById('imagesBtnClick');
+  console.log('imagesBtn', imagesBtn);
+  const logoBtnClick = document.getElementById('logoBtnClick');
+  const generateBtnClick = document.getElementById('generateBtnClick');
+  imagesBtn.addEventListener('click', () => {
+    ipcRenderer.send('imagesBtnClick');
+  });
+  logoBtnClick.addEventListener('click', () => {
+    ipcRenderer.send('logoBtnClick');
+  });
+  generateBtnClick.addEventListener('click', () => {
+    ipcRenderer.send('generateBtnClick');
+  });
+});
