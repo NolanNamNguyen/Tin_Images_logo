@@ -19,7 +19,7 @@
   "license": "CC0-1.0",
   "devDependencies": {
     "@electron-forge/publisher-github": "^7.2.0",
-    "electron": "^28.2.2",
+    "electron": "^29.1.5",
     "electron-builder": "^24.9.1",
     "electron-forge": "^5.2.4"
   },
